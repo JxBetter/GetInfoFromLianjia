@@ -1,0 +1,45 @@
+# -*- coding: utf-8 -*-
+import scrapy
+import xlwt
+import numpy
+from scrapy.http import Request
+from urllib import parse
+
+
+class LianjianSpider(scrapy.Spider):
+    name = 'lianjian'
+    allowed_domains = ['lianjia.com']
+    file = xlwt.Workbook()
+    table = file.add_sheet('lj')
+    nrow = 1
+    trow = 0
+    page = 1
+    # maxprice = input("请输入房租上限：")
+    # minprice = input("请输入房租下限：")
+    sx_name = input("请输入地区拼音缩写首字母：")
+    if sx_name == 'sh':
+        start = 'https://'+sx_name+'.lianjia.com/zufang/d1'
+    start = 'https://'+sx_name+'.lianjia.com/zufang/pg1'
+    def start_requests(self):
+        head = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.104 Safari/537.36 Core/1.53.2372.400 QQBrowser/9.5.10771.400'}
+        yield Request(self.start,headers=head,callback=self.parse)
+
+    def parse(self, response):
+        titles = response.xpath('//img/@alt').extract()
+        prices = response.xpath('//div[@class="price"]/span/text()').extract()
+        links = response.xpath('//div[@class="pic-panel"]/a/@href').extract()
+        print(titles[:len(titles)-1])
+        print(prices)
+        print(links)
+        self.trow = self.nrow
+        self.nrow += len(prices)
+        for k in range(self.trow,self.nrow):
+            self.table.write(k,0,titles[k-self.trow])
+            self.table.write(k,1,prices[k-self.trow])
+            self.table.write(k,2,links[k-self.trow])
+        self.file.save('D:/r.xls')
+        self.page += 1
+        next_url = 'http://'+self.sx_name+'.lianjia.com/zufang/pg'+str(self.page)
+        if self.sx_name == 'sh':
+            next_url = 'http://'+self.sx_name+'.lianjia.com/zufang/d'+str(self.page)
+        yield Request(next_url,callback=self.parse)
